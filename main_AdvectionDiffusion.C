@@ -65,8 +65,9 @@ int runSimulatorStationary(char* infile, AD& model)
 
 
 template<class Solver, class AD>
-int runSimulatorTransientImpl(char* infile, TimeIntegration::Method tIt,
-                              Solver& sim, AD& model)
+int runSimulatorTransientImpl(char* infile,
+                              Solver& sim, AD& model,
+                              const AdvectionDiffusionArgs& args)
 {
   utl::profiler->start("Model input");
 
@@ -84,13 +85,17 @@ int runSimulatorTransientImpl(char* infile, TimeIntegration::Method tIt,
 
   utl::profiler->stop("Model input");
 
+  if (!args.restartfile.empty())
+    SIM::handleRestart(model, solver, args.restartfile, args.restartlevel);
+
   std::unique_ptr<DataExporter> exporter;
   if (model.opt.dumpHDF5(infile)) {
     if (model.opt.discretization < ASM::Spline && !model.opt.hdf5.empty())
       IFEM::cout <<"\n ** HDF5 output is available for spline discretization only"
         <<". Deactivating...\n"<< std::endl;
     else
-      exporter.reset(SIM::handleDataOutput(model, solver, model.opt.hdf5, false, 1, 1));
+      exporter.reset(SIM::handleDataOutput(model, solver, model.opt.hdf5, false,
+                                           model.opt.saveInc, model.opt.restartInc));
   }
 
   if ((res=solver.solveProblem(infile, exporter.get())))
@@ -120,7 +125,7 @@ int runSimulator(char* infile, const AdvectionDiffusionArgs& args)
                                     args.timeMethod,
                                     args.integrandType);
     SIMAD<Dim,AdvectionDiffusionBDF> model(integrand, true);
-    return runSimulatorTransientImpl(infile, args.timeMethod, model, model);
+    return runSimulatorTransientImpl(infile, model, model, args);
   }
   else {
     AdvectionDiffusionExplicit integrand(Dim::dimension, args.integrandType);
@@ -128,11 +133,11 @@ int runSimulator(char* infile, const AdvectionDiffusionArgs& args)
     ADSIM model(integrand, true);
     if (args.timeMethod >= TimeIntegration::HEUNEULER) {
       TimeIntegration::SIMExplicitRKE<ADSIM> sim(model, args.timeMethod, args.errTol);
-      return runSimulatorTransientImpl(infile, args.timeMethod, sim, model);
+      return runSimulatorTransientImpl(infile, sim, model, args);
     }
     else {
       TimeIntegration::SIMExplicitRK<ADSIM> sim(model, args.timeMethod);
-      return runSimulatorTransientImpl(infile, args.timeMethod, sim, model);
+      return runSimulatorTransientImpl(infile, sim, model, args);
     }
   }
 }
@@ -182,7 +187,11 @@ int main (int argc, char** argv)
       ; // ignore the obsolete option
     else if (!strcmp(argv[i],"-adap"))
       args.adap = true;
-    else if (!strcmp(argv[i],"-2D"))
+    else if (!strcmp(argv[i],"-restart") && i < argc-1) {
+      args.restartfile = strtok(argv[++i],".");
+      if (i+1 < argc && argv[i+1][0] != '-')
+        args.restartlevel = atoi(argv[++i]);
+    } else if (!strcmp(argv[i],"-2D"))
       args.dim = 2;
     else if (!strcmp(argv[i],"-be"))
       args.timeMethod = TimeIntegration::BE;
