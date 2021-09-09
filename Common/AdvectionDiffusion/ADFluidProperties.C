@@ -45,7 +45,6 @@ void FluidProperties::parse(const TiXmlElement* elem)
   utl::getAttribute(elem,"Pr",Pr);
   const TiXmlElement* raf = elem->FirstChildElement("rayleigh");
   if (raf) {
-    std::string type;
     utl::getAttribute(raf,"type",type);
     RaFdef = utl::getValue(raf,"rayleigh");
     RaF.reset(utl::parseRealFunc(RaFdef, type, false));

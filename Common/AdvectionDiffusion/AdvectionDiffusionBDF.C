@@ -178,14 +178,19 @@ bool AdvectionDiffusionBDF::evalInt (LocalIntegral& elmInt,
 }
 
 
-bool AdvectionDiffusionBDF::finalizeElement (LocalIntegral& A)
+bool AdvectionDiffusionBDF::finalizeElement (LocalIntegral& elmInt)
 {
   if (stab != NONE) {
-    ElementInfo& E = static_cast<ElementInfo&>(A);
+    ElementInfo& E = static_cast<ElementInfo&>(elmInt);
 
     // Add stabilization terms
     E.A[0] += E.eMs;
     E.b[0] += E.eSs;
+  }
+
+  if (m_mode == SIM::RHS_ONLY) {
+    ElmMats& A = static_cast<ElmMats&>(elmInt);
+    A.A[0].multiply(A.vec[0], A.b[0], -1.0, 1.0);
   }
 
   return true;

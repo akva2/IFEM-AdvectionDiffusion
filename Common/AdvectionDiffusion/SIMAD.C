@@ -18,14 +18,19 @@
 #include "AdvectionDiffusionExplicit.h"
 #include "AdvectionDiffusionImplicit.h"
 #include "AdvectionDiffusionSource.h"
+
+#include "AlgEqSystem.h"
 #include "AnaSol.h"
 #include "ASMstruct.h"
 #include "DataExporter.h"
 #include "ExprFunctions.h"
 #include "IFEM.h"
 #include "Profiler.h"
+#include "SAM.h"
+#include "SIM1D.h"
 #include "SIM2D.h"
 #include "SIM3D.h"
+#include "SystemMatrix.h"
 #include "TimeStep.h"
 #include "tinyxml.h"
 #include "Utilities.h"
@@ -78,7 +83,7 @@ bool SIMAD<Dim,Integrand>::parse (const TiXmlElement* elem)
   if (strcasecmp(elem->Value(),inputContext.c_str()))
     return this->Dim::parse(elem);
 
-  const char* value = 0;
+  const char* value;
   const TiXmlElement* child = elem->FirstChildElement();
   for (; child; child = child->NextSiblingElement())
 
@@ -145,7 +150,7 @@ bool SIMAD<Dim,Integrand>::parse (const TiXmlElement* elem)
       }
     }
     else if (strcasecmp(child->Value(),"advection") == 0) {
-      const char* value = child->FirstChild()->Value();
+      value = child->FirstChild()->Value();
       if (!strcasecmp(value, "convective")) {
         IFEM::cout << "\n\tUsing convective advection operator\n";
         AD.setAdvectionForm(WeakOperators::CONVECTIVE);
@@ -254,6 +259,7 @@ template<class Dim, class Integrand>
 bool SIMAD<Dim,Integrand>::solveStep (TimeStep& tp, bool)
 {
   PROFILE1("SIMAD::solveStep");
+  IFEM::cout << "multstep ? " << tp.multiSteps() << std::endl;
 
   this->setMode(tp.multiSteps() ? SIM::DYNAMIC : SIM::STATIC);
   if (Dim::msgLevel >= 0 && standalone && tp.multiSteps())
@@ -492,10 +498,33 @@ setup (SIMAD<Dim,Integrand>& ad,
   return 0;
 }
 
+
+template<class Dim, class Integrand>
+bool SIMAD<Dim,Integrand>::assembleDiscreteTerms (const IntegrandBase*,
+                                                  const TimeDomain&)
+{
+  if (!discreteLoad)
+    return true;
+
+  if (discreteLoad->size() != this->getNoDOFs())
+    return false;
+
+  SystemVector* v = Dim::myEqSys->getVector(0);
+  for (size_t i = 1; i <= this->getNoDOFs(); ++i) {
+    int eq = Dim::mySam->getEquation(i, 1);
+    if (eq != 0)
+      v->getPtr()[eq-1] += (*discreteLoad)[i-1];
+  }
+
+  return true;
+}
+
 //! \brief Helper macro for explicit template instancing.
 #define INSTANCE(T) \
+  template class SIMAD<SIM1D,T>; \
   template class SIMAD<SIM2D,T>; \
   template class SIMAD<SIM3D,T>; \
+  template struct SolverConfigurator<SIMAD<SIM1D,T>>; \
   template struct SolverConfigurator<SIMAD<SIM2D,T>>; \
   template struct SolverConfigurator<SIMAD<SIM3D,T>>; \
 

@@ -24,7 +24,9 @@
 
 
 class DataExporter;
+class IntegrandBase;
 class SIMoutput;
+struct TimeDomain;
 class TimeStep;
 
 
@@ -170,6 +172,11 @@ public:
   //! \brief Returns a reference to the projection vectors.
   Vectors& getProjections() { return projs; }
 
+  void setDiscreteLoad(const std::vector<double>* vec)
+  {
+    discreteLoad = vec;
+  }
+
 protected:
   //! \brief Initializes for integration of Neumann terms for a given property.
   //! \param[in] propInd Physical property index
@@ -183,6 +190,9 @@ protected:
   void printNormGroup(const Vector& rNorm, const Vector& fNorm,
                       const std::string& name) const override;
 
+  bool assembleDiscreteTerms (const IntegrandBase*,
+                              const TimeDomain&) override;
+
 private:
   Integrand& AD; //!< Problem integrand definition
   typename Integrand::Robin robinBC; //!< Robin integrand definition
@@ -193,6 +203,8 @@ private:
   bool standalone = false; //!< If \e true, this simulator owns the VTF object
   std::string inputContext; //!< Input context
   int aCode[2] = {0}; //!< Analytical BC code (used by destructor)
+
+  const std::vector<double>* discreteLoad = nullptr; //!< Additional discrete load vector (used with CoSTA)
 };
 
 
