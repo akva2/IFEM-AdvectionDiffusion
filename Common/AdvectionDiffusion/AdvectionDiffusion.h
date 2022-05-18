@@ -268,6 +268,8 @@ public:
   //! \brief Registers where we can inject a mixed-basis vector field.
   void setNamedFields(const std::string&, Fields*) override;
 
+  //! \brief Enables 'marangoni' reaction field.
+  void enableMarangoniReaction() { marangoniReact = true; }
 
 protected:
   std::unique_ptr<VecFunc>  Uad;      //!< Pointer to advection field
@@ -287,6 +289,7 @@ protected:
   bool  residualNorm; //!< If \e true, we will evaluate residual norm
   bool useModified = false; //!< If \e true use modified element size in residual estimate
   WeakOperators::ConvectionForm advForm = WeakOperators::CONVECTIVE; //!< Advection formulation to use
+  bool marangoniReact = false; //!< True to enable 'marangoni' reaction field
 
   Vectors velocity; //!< The advecting velocity field
   std::array<std::unique_ptr<Fields>,2> uFields; //!< Externally provided velocity fields

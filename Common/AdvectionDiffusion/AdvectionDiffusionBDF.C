@@ -112,6 +112,8 @@ bool AdvectionDiffusionBDF::evalInt (LocalIntegral& elmInt,
   double react = 0;
   if (reaction)
     react = (*reaction)(X);
+  else if (marangoniReact)
+    react = -U[0][2];
 
   double theta=0;
   for (int t=0;t<bdf.getOrder();++t) {

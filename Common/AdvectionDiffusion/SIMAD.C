@@ -135,6 +135,10 @@ bool SIMAD<Dim,Integrand>::parse (const TiXmlElement* elem)
       AD.setReactionField(new EvalFunction(value));
       IFEM::cout <<"Reaction field: "<< value << std::endl;
     }
+    else if (!strcasecmp(child->Value(),"marangoni")) {
+      AD.enableMarangoniReaction();
+      IFEM::cout <<"Reaction field: Marangoni (vertical velocity)" << std::endl;
+    }
     else if ((value = utl::getValue(child,"source"))) {
       std::string type;
       utl::getAttribute(child, "type", type);
