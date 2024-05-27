@@ -374,6 +374,10 @@ bool AdvectionDiffusionNorm::evalInt (LocalIntegral& elmInt,
       Vec3 U = hep.getAdvectionVelocity(fe, X);
       double react = hep.reaction ? (*hep.reaction)(X) : 0.0;
       double res = f + kappa*hess - U*dTh - react*Th;
+      if (hep.getFluidProperties().kappaFunc()) {
+        Vec3 dk = hep.getFluidProperties().kappaFunc()->gradient(X);
+        res += dk*dT;
+      }
       double kk;
       if (hep.useModifiedElmSize()) {
         if (hep.getCbar() > 0.0)
@@ -382,10 +386,11 @@ bool AdvectionDiffusionNorm::evalInt (LocalIntegral& elmInt,
           kk = fe.h/sqrt(kappa);
       } else
         kk = fe.h;
-      ip++; // unused
+      pnorm[ip++] += kk*kk*f*f*fe.detJxW;
       pnorm[ip++] += kk*kk*res*res*fe.detJxW;
+      pnorm[ip++] += kk*kk*hess*hess*fe.detJxW;
       if (anasol && anasol->getScalarSecSol())
-        ip += 2;
+        ++ip; // effectivity index
     } else {
       Vec3 dTr;
       for (size_t k = 0; k < hep.nsd; k++)
@@ -397,7 +402,7 @@ bool AdvectionDiffusionNorm::evalInt (LocalIntegral& elmInt,
 
       if (anasol && anasol->getScalarSecSol()) {
         pnorm[ip++] += kappa*(dT-dTr)*(dT-dTr)*fe.detJxW;
-        ip++; // effectivity index
+        ++ip; // effectivity index
       }
     }
 
@@ -432,8 +437,10 @@ size_t AdvectionDiffusionNorm::getNoFields (int group) const
     return this->NormBase::getNoFields();
   else if (group == 1)
     return anasol ? 6 : 2;
-  else
-    return anasol ? 4 : 2;
+  else {
+    const AdvectionDiffusion& hep = static_cast<const AdvectionDiffusion&>(myProblem);
+    return anasol ? 4 : (hep.doResidualNorm() ? 3 : 2);
+  }
 }
 
 
@@ -457,9 +464,9 @@ std::string AdvectionDiffusionNorm::getName (size_t i, size_t j,
   };
 
   static const char* res[] = {
-    "dummy1",
+    "h^2 |(f_T^h)|",
     "|T^h|_res",
-    "dummy2",
+    "h^2 |nabla^2 T^h|_L2",
     "effectivity index"
   };
 
@@ -483,6 +490,16 @@ int AdvectionDiffusionNorm::getIntegrandType () const
 {
   const AdvectionDiffusion& hep = static_cast<const AdvectionDiffusion&>(myProblem);
   return hep.doResidualNorm() ? SECOND_DERIVATIVES | ELEMENT_CORNERS : STANDARD;
+}
+
+
+bool AdvectionDiffusionNorm::hasElementContributions (size_t i, size_t j) const
+{
+  const AdvectionDiffusion& hep = static_cast<const AdvectionDiffusion&>(myProblem);
+  if (i == 2 && hep.doResidualNorm())
+    return j == 2 || j == 4;
+
+  return true;
 }
 
 

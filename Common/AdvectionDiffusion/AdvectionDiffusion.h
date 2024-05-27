@@ -385,6 +385,9 @@ public:
   //! \param[in] prefix Common prefix for all norm names
   std::string getName(size_t i, size_t j, const char* prefix) const override;
 
+  //! \brief Returns whether a norm quantity stores element contributions.
+  bool hasElementContributions(size_t i, size_t j) const override;
+
   using NormBase::finalizeElement;
   //! \brief Finalizes the element norms after the numerical integration.
   //! \details This method is used to compute effectivity indices.
