@@ -34,8 +34,10 @@ AdvectionDiffusionAnaSolSource (const AnaSol& aSol,
                                 const VecFunc& U,
                                 const FluidProperties& prop,
                                 const RealFunc* rField,
-                                bool stationary) :
-  anaSol(aSol), adVel(U), props(prop), reaction(rField), stat(stationary)
+                                bool stationary,
+                                int idx)
+  : anaSol(aSol), adVel(U), props(prop), reaction(rField),
+    stat(stationary), scalarIdx(idx)
 {
 }
 
@@ -43,7 +45,7 @@ AdvectionDiffusionAnaSolSource (const AnaSol& aSol,
 Real AdvectionDiffusionAnaSolSource::evaluate (const Vec3& X) const
 {
   Real result;
-  const RealFunc& T = *anaSol.getScalarSol();
+  const RealFunc& T = *anaSol.getScalarSol(scalarIdx);
   const Vec3 dT = T.gradient(X);
   const SymmTensor d2T = T.hessian(X);
 
